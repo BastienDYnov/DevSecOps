@@ -1,0 +1,21 @@
+# disallow-latest-tag.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Enforce # Bloque le déploiement
+  rules:
+  - name: require-image-tag
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: "L'utilisation du tag 'latest' est interdite."
+      pattern:
+        spec:
+          containers:
+          - image: "!*:latest"
+

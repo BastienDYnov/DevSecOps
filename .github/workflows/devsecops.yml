@@ -1,0 +1,66 @@
+
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  security-scans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Terraform Scan (Checkov)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infra/
+          framework: terraform
+
+      - name: Kubernetes YAML Scan (kube-linter)
+        uses: stackrox/kube-linter-action@v1.0.4
+        with:
+          directory: policies/
+
+      - name: SAST Scan (Semgrep)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: "p/default"
+
+  build-and-push:
+    needs: security-scans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Image
+        run: docker build -t my-registry/app:latest .
+
+      - name: Container Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'my-registry/app:latest'
+          format: 'table'
+          exit-code: '1' # Bloque la pipeline si vulnérabilités CRITICAL
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push to Harbor
+        run: echo "Pushing image to Harbor registry (Mock)"
+        # docker login my-harbor.com -u ${{ secrets.HARBOR_USER }} -p ${{ secrets.HARBOR_PASS }}
+        # docker push my-registry/app:latest
+
+      - name: Sign Image (Cosign)
+        uses: sigstore/cosign-installer@main
+        # run: cosign sign --key env://COSIGN_PRIVATE_KEY my-registry/app:latest
+
+  deploy-and-dast:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      # Ici : Instanciation de Kind et déploiement applicatif
+
+      - name: DAST Scan (ZAP Baseline)
+        uses: zaproxy/action-baseline@v0.9.0
+        with:
+          target: 'http://localhost:8080' # L'URL de ton app déployée sur kind

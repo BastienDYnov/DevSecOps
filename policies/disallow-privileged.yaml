@@ -1,0 +1,21 @@
+# disallow-privileged.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged
+spec:
+  validationFailureAction: Enforce
+  rules:
+  - name: check-privileged
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: "Les conteneurs privilégiés ne sont pas autorisés."
+      pattern:
+        spec:
+          containers:
+          - =(securityContext):
+              =(privileged): "false"
