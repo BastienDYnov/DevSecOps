@@ -1,0 +1,22 @@
+name: Quality Gate - DevSecOps
+
+on: [push]
+
+jobs:
+  build-and-scan:
+    name: Build & Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Compilation de l'image
+        run: docker build -t app-vuln:latest .
+
+      - name: Scan de vulnérabilités avec Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'app-vuln:latest'
+          format: 'table'
+          exit-code: '1' 
+          severity: 'CRITICAL'
